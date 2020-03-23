@@ -77,7 +77,11 @@ def open_tunnel(thing_name, service, timeout):
         if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
             tunnel_id = response["tunnelId"]
             token = response["sourceAccessToken"]
-            print("Secure tunnel {} has been opened. Expires in {} minutes ".format(tunnel_id, args.timeout))
+            destination_token = response["destinationAccessToken"]
+            print("Secure tunnel {} has been opened. Expires in {} minutes \n".format(tunnel_id, args.timeout))
+            print("tunnel_id={}\n".format(tunnel_id))
+            print("sourceAccessToken={}\n".format(token))
+            print("destination_token={}\n".format(destination_token))
             return tunnel_id, token
 
     except Exception as e:
