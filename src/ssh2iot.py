@@ -28,15 +28,28 @@ aws_regions = [
 
 parser = argparse.ArgumentParser(description="Connect to IoT thing behind firewall via SSH over AWS IoT Secure Tunneling.")
 
+parser.add_argument('-l', '--list-tunnels', action="store_true", help="List tunnels for the thing")
 parser.add_argument('-i', '--thing-name', required=True, help="IoT thing name")
-parser.add_argument('-t', '--timeout', default=720, type=int,
+parser.add_argument('--tunnel', help="Connect to existing tunnel. Used together with --token")
+parser.add_argument('-t', '--token', help="Connect with existing token. Used together with --tunnel")
+parser.add_argument('-T', '--timeout', default=720, type=int,
                     help="The maximum time in minutes a tunnel can remain open")
 parser.add_argument('-s', '--service', default="ssh", choices=['ssh', 'scp'], help="Service to use")
 parser.add_argument('-r', '--region', default="us-east-1", choices=aws_regions, help="Service to use")
 parser.add_argument('-u', '--ssh-user', default="root", help="SSH user, default 'root'")
+parser.add_argument('-D', '--delete-tunnel', action="store_true", help="Close and delete tunnel, when session is ended.")
 
 
 args = parser.parse_args()
+
+reuse_existing_tunnel = False
+
+if args.tunnel and args.token:
+    reuse_existing_tunnel = True
+elif args.tunnel and not args.token:
+        parser.error('The --tunnel argument requires the --token')
+elif args.token and not args.tunnel:
+        parser.error('The --token argument requires the --tunnel')
 
 
 def open_tunnel(thing_name, service, timeout):
@@ -115,14 +128,28 @@ def wait_for_source_device_connected(tunnel_id):
     sys.exit(-1)
 
 
-
-
 def get_random_unused_tcp_port():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(('', 0))
     addr = s.getsockname()
     s.close()
     return addr[1]
+
+
+def list_tunnels_for_thing(name):
+    response = client.list_tunnels(
+        thingName=thing_name,
+        maxResults=100
+    )
+
+    for t in response["tunnelSummaries"]:
+        print("{}\t{}\t{}".format(
+            t["tunnelId"],
+            t["status"],
+            t["description"],
+            )
+        )
+
 
 
 # launch localproxy in source mode
@@ -155,8 +182,21 @@ if __name__ == '__main__':
 
     thing_name = args.thing_name
 
-    # open secure tunnel
-    tunnel_id, token = open_tunnel(thing_name, args.service, args.timeout)
+    if args.list_tunnels:
+        list_tunnels_for_thing(thing_name)
+        sys.exit(0)
+
+    tunnel_id = ""
+    token = ""
+
+    if reuse_existing_tunnel:
+        # connect to existing tunnel
+        tunnel_id = args.tunnel
+        token = args.token
+        print("Trying to connect to existing tunnel {}...".format(tunnel_id))
+    else:
+        print("Opening new tunnel...")
+        # tunnel_id, token = open_tunnel(thing_name, args.service, args.timeout)
 
     wait_for_iot_device_connected(tunnel_id, thing_name)
 
@@ -174,6 +214,7 @@ if __name__ == '__main__':
     proxy_proc.terminate()
 
     # close and delete tunnel
-    response = client.close_tunnel(tunnelId=tunnel_id, delete=True)
-    if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
-        print("Tunnel {} closed and deleted.".format(tunnel_id))
+    if args.delete_tunnel:
+        response = client.close_tunnel(tunnelId=tunnel_id, delete=True)
+        if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
+            print("Tunnel {} closed and deleted.".format(tunnel_id))
