@@ -38,6 +38,7 @@ parser.add_argument('-s', '--service', default="ssh", choices=['ssh', 'scp'], he
 parser.add_argument('-r', '--region', default="us-east-1", choices=aws_regions, help="Service to use")
 parser.add_argument('-u', '--ssh-user', default="root", help="SSH user, default 'root'")
 parser.add_argument('-D', '--delete-tunnel', action="store_true", help="Close and delete tunnel, when session is ended.")
+parser.add_argument('-F', '--force-open-tunnel', action="store_true", help="Forcefully open new tunnel. Extra charges will apply.")
 
 
 args = parser.parse_args()
@@ -136,13 +137,19 @@ def get_random_unused_tcp_port():
     return addr[1]
 
 
-def list_tunnels_for_thing(name):
-    response = client.list_tunnels(
-        thingName=thing_name,
-        maxResults=100
-    )
+def get_tunnels_for_thing(name):
+    try:
+        response = client.list_tunnels(
+            thingName=name,
+            maxResults=100
+        )
+        return response["tunnelSummaries"]
+    except:
+        return []
 
-    for t in response["tunnelSummaries"]:
+
+def print_tunnels_for_thing(tunnels):
+    for t in tunnels:
         print("{}\t{}\t{}".format(
             t["tunnelId"],
             t["status"],
@@ -150,6 +157,13 @@ def list_tunnels_for_thing(name):
             )
         )
 
+
+def get_open_tunnels_for_thing(tunnels):
+    open_tunnels = []
+    for tunnel in tunnels:
+        if tunnel["status"] == "OPEN":
+            open_tunnels.append(tunnel)
+    return open_tunnels
 
 
 # launch localproxy in source mode
@@ -182,8 +196,11 @@ if __name__ == '__main__':
 
     thing_name = args.thing_name
 
+    # get existing tunnels for the thing
+    tunnels = get_tunnels_for_thing(thing_name)
+
     if args.list_tunnels:
-        list_tunnels_for_thing(thing_name)
+        print_tunnels_for_thing(tunnels)
         sys.exit(0)
 
     tunnel_id = ""
@@ -195,8 +212,20 @@ if __name__ == '__main__':
         token = args.token
         print("Trying to connect to existing tunnel {}...".format(tunnel_id))
     else:
+        # check if there're open tunnels for the thing to avoid extra costs
+        open_tunnels = get_open_tunnels_for_thing(tunnels)
+        if len(open_tunnels) > 0:
+            print("There are already open tunnels for this thing:")
+            print_tunnels_for_thing(open_tunnels)
+
+            if not args.force_open_tunnel:
+                print()
+                print("Connect to existing tunnel with --tunnel and --token parameters.")
+                print("Use --force-open-tunnel to open new tunnel (extra charges will apply)")
+                sys.exit(0)
+
         print("Opening new tunnel...")
-        # tunnel_id, token = open_tunnel(thing_name, args.service, args.timeout)
+        tunnel_id, token = open_tunnel(thing_name, args.service, args.timeout)
 
     wait_for_iot_device_connected(tunnel_id, thing_name)
 
