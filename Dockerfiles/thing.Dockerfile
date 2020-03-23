@@ -17,7 +17,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY bin/localproxy /usr/local/bin/localproxy
 
 COPY supervisor.conf /etc/supervisor/conf.d/supervisor.conf
-COPY authorized_keys /root/.ssh/authorized_keys
 
 COPY src/tunnel-agent.py .
 
