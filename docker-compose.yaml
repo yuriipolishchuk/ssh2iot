@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+  ssh2iot:
+    build:
+      context: .
+      dockerfile: ./Dockerfiles/ssh2iot.Dockerfile
+    image: ssh2iot:latest
+    # entrypoint: 'true'
+
+  thing_1:
+    build:
+      context: .
+      dockerfile: ./Dockerfiles/thing.Dockerfile
+    image: thing:latest
+    volumes:
+      - ./src:/app
+      - ./certs/MyIotThing:/certs
+      - ./certs/ca:/certs/ca
+    environment:
+      - CLIENT_ID=MyIotThing
+      - ENDPOINT=a2lxgcq5uonp51-ats.iot.eu-west-1.amazonaws.com
+      - REGION=eu-west-1
+      - ROOT_CA=/certs/ca/AmazonRootCA1.pem
+      - CERT=/certs/certificate.pem.crt
+      - KEY=/certs/private.pem.key
+      - VERBOSITY=Error
+
+  thing_2:
+    depends_on:
+      - thing_1
+    image: thing:latest
+    volumes:
+      - ./src:/app
+      - ./certs/MyIotThing2:/certs
+      - ./certs/ca:/certs/ca
+    environment:
+      - CLIENT_ID=MyIotThing2
+      - ENDPOINT=a2lxgcq5uonp51-ats.iot.eu-west-1.amazonaws.com
+      - REGION=eu-west-1
+      - ROOT_CA=/certs/ca/AmazonRootCA1.pem
+      - CERT=/certs/certificate.pem.crt
+      - KEY=/certs/private.pem.key
+      - VERBOSITY=Error
