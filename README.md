@@ -2,6 +2,7 @@
 # Reverse SSH Project
 
 ## Task
+
 ```
 The goal of the project is to provide SSH access (console and/or file operations) to a device running
 a linux instance on demand, from arbitrary locations. The device is typically hidden behind a
@@ -52,22 +53,25 @@ behind firewalls easily and reliably.
 
 ---
 
-# Deployment instructions for demo:
+## Deployment instructions for demo:
 
 * Bootstrap requirements for terraform (s3 bucket + dynamodb table):
-```
+
+```bash
 cd terraform/bootstrap
 terraform init && terraform apply
 ```
 
 * Provision IoT infra with terraform:
-```
+
+```bash
 cd ../environments/test
 terraform init && terraform apply
 ```
 
 * Configure IoT things (get endpoint and certs from terraform output):
-```
+
+```bash
 terraform output -json this | jq -r '.certificate.certificate_pem' > ../../../certs/certificate.pem.crt
 terraform output -json this | jq -r '.certificate.private_key' > ../../../certs/private.pem.key
 
@@ -76,23 +80,29 @@ grep ENDPOINT ../../../things.env || echo "ENDPOINT=${ENDPOINT}" >> ../../../thi
 ```
 
 * Run IoT things (with tunnel agent and local proxy):
-```
+
+```bash
 docker-compose up --build
 ```
 
 * Add your public key to `authorized_keys`:
-```
+
+```bash
 cat ~/.ssh/id_rsa.pub >> authorized_keys
 ```
+
 or get if from GitHub with:
-```
+
+```bash
 wget -O authorized_keys https://github.com/yuriipolishchuk.keys
 ```
+
 replacing `yuriipolishchuk` with your github username.
 
 
 * Create alias for SSH wrapper
-```
+
+```bash
 alias ssh2iot "docker run --rm -it -v $HOME/.aws:/root/.aws -v $HOME/.ssh:/root/.ssh -e AWS_PROFILE=$AWS_PROFILE ssh2iot:latest"
 
 # or pass AWS credentials as environment variables
@@ -100,39 +110,61 @@ alias ssh2iot "docker run --rm -it  -v $HOME/.ssh:/root/.ssh -e AWS_ACCESS_KEY_I
 ```
 
 * Run SSH wrapper to connect to IoT things over AWS IoT Secure Tunnel
-```
+
+```bash
 ssh2iot  -i MyIotThing1 -r eu-west-1
 ```
+
 To connect to another thing just change `-i` parameter to `MyIotThing2`
 
 To reuse existing tunnel (for cost reduction):
-```
+
+```bash
 ssh2iot -i MyIotThing1 -r eu-west-1 --tunnel $TUNNEL --token $TOKEN
 ```
+
 For `$TUNNEL` and `$TOKEN` values see the output of the command in which tunnel was opened.
 
 NOTE: IAM roles can be used for AuthN/Z if container is running on EC2 instance.
 
-
 ---
 
-# TODO:
+## TODO:
+
+* Implement file copy mode for `scp`
 
 * Re-architect to use pivot server for cost savings.
+
+* Alternatively websockets proxy can be considered. For example [wstunnel](https://github.com/mhzed/wstunnel):
+
+  ```bash
+  ssh -o ProxyCommand="wstunnel -c -t stdio:%h:%p https://server" user@sshDestination
+  ```
+
+  websocket server implementation must handle AuthN/Z and keep tunnels state
+
 * Restrict permissions for IoT devices in IAM policy
+
 * Use separate certificates for devices
+
 * Implement async stdio both for agent and ssh wrapper
+
 * Fix defunct subprocesses aka zombies
+
 * Make use of classes (OOP)
+
 * Cover the code with unit/integration tests
+
 * Comment the code properly
+
 * Implement sending notifications for IoT device from admin console (SSH wrapper) on tunnel creation.
-This will resolve issue when IoT thing was launched after tunnel creation, so it doesn't have token.
+  This will resolve issue when IoT thing was launched after tunnel creation, so it doesn't have token.
 
 As temporary workaround you can send the token to IoT thing from `AWS IoT Core console (UI) -> Test -> Publish`
 use topic `$aws/things/MyIotThing1/tunnels/notify`, where `MyIotThing1` is a thing name,
 and payload:
-```
+
+```json
 {
   "clientAccessToken": "AQGAA...",
   "clientMode": "destination",
@@ -142,20 +174,23 @@ and payload:
   ]
 }
 ```
+
 `clientAccessToken` value is in output of the command in which tunnel was opened.
 
 ---
 
 
-# CLEANUP:
+## CLEANUP:
 
 * Clean docker-compose containers, volumes and images
-```
+
+```bash
 docker-compose down --volumes --rmi all --remove-orphans
 ```
 
 * Destroy terraform infrastructure
-```
+
+```bash
 cd terraform/environments/test
 terraform destroy
 
