@@ -206,6 +206,8 @@ NOTE: IAM roles can be used for AuthN/Z if container is running on EC2 instance.
 
 * Comment the code properly
 
+* Follow best practices for running applications in containers, i.e. running app from non-root user, etc..
+
 * Implement sending notifications for IoT device from admin console (SSH wrapper) on tunnel creation.
   This will resolve issue when IoT thing was launched after tunnel creation, so it doesn't have token.
 
