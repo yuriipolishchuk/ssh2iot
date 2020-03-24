@@ -88,7 +88,7 @@ behind firewalls easily and reliably.
 
 3. Tunnel agent receives the message with `clientAccessToken` and runs `localproxy` in destination mode, proxying TCP traffic to `127.0.0.1:22` (local SSH daemon running on IoT device).
 
-4. `ssh2iot.py` runs `local proxy` in source mode, specifying `tunnelId` and `destinationAccessToken` retrieved in step 2. `local proxy` binds and listens on free random  TCP port on `127.0.0.1`
+4. `ssh2iot.py` runs `local proxy` in source mode, specifying `tunnelId` and `sourceAccessToken` retrieved in step 2. `local proxy` binds and listens on free random  TCP port on `127.0.0.1`
 
 5. `ssh2iot.py` runs `ssh` client to `127.0.0.1:${TCP_PORT}`. SSH connection is established.
 
