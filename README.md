@@ -53,6 +53,55 @@ behind firewalls easily and reliably.
 
 ---
 
+## Solution description
+
+### Components:
+
+* Tunnel agent (device agent) - `tunnel-agent.py` - an IoT application that connects to the AWS IoT device gateway and listens for new tunnel notifications over MQTT.
+
+* Admin console (SSH wrapper) - `ssh2iot.py`. Used on the device an operator uses to initiate a session to the destination device, usually a laptop or desktop computer.
+
+* [Local proxy](https://github.com/aws-samples/aws-iot-securetunneling-localproxy) - A software proxy that runs on the source and destination devices and relays a data stream between the Secure Tunneling service and the device application. The local proxy can be run in source mode or destination mode. For more information, see [Local Proxy](https://docs.aws.amazon.com/iot/latest/developerguide/local-proxy.html).
+
+* Destination application - The application that runs on the destination device. For example, the destination application can be an SSH daemon for establishing an SSH session using secure tunneling.
+
+* AWS IoT Secure Tunnel - A logical pathway through AWS IoT that enables bidirectional communication between a source device and destination device
+
+  
+
+### Connection flow
+
+1. The tunnel agent is running on IoT device, it listens `MQTT` topic `$aws/things/${THING_NAME}/tunnels/notify` for message with payload:
+
+   ```json
+   {
+     "clientAccessToken": "AQGAA...",
+     "clientMode": "destination",
+     "region": "eu-west-1",
+     "services": [
+       "ssh"
+     ]
+   }
+   ```
+
+2. Operator runs `ssh2iot.py` specifying IoT thing name and new AWS IoT Secure Tunnel is opened. Then it waits untill destination `local proxy` connects to tunnel.
+
+3. Tunnel agent receives the message with `clientAccessToken` and runs `localproxy` in destination mode, proxying TCP traffic to `127.0.0.1:22` (local SSH daemon running on IoT device).
+
+4. `ssh2iot.py` runs `local proxy` in source mode, specifying `tunnelId` and `destinationAccessToken` retrieved in step 2. `local proxy` binds and listens on free random  TCP port on `127.0.0.1`
+
+5. `ssh2iot.py` runs `ssh` client to `127.0.0.1:${TCP_PORT}`. SSH connection is established.
+
+6. Operator exits from ssh connection. `ssh2iot.py` stops `local proxy` and exits.
+
+7. AWS IoT Secure Tunnel expires after timeout (default 12 hours). `local proxy` on IoT device quits gracefully.
+
+8. `tunnel agent` on IoT device waits for new tunnel notifications. Everything repeats from step 1.
+
+   
+
+---
+
 ## Deployment instructions for demo:
 
 * Bootstrap requirements for terraform (s3 bucket + dynamodb table):
