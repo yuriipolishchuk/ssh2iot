@@ -84,7 +84,7 @@ behind firewalls easily and reliably.
    }
    ```
 
-2. Operator runs `ssh2iot.py` specifying IoT thing name and new AWS IoT Secure Tunnel is opened. Then it waits untill destination `local proxy` connects to tunnel.
+2. Operator runs `ssh2iot.py` specifying IoT thing name and new AWS IoT Secure Tunnel is opened. Then it waits until destination `local proxy` connects to tunnel.
 
 3. Tunnel agent receives the message with `clientAccessToken` and runs `localproxy` in destination mode, proxying TCP traffic to `127.0.0.1:22` (local SSH daemon running on IoT device).
 
@@ -146,7 +146,7 @@ or get if from GitHub with:
 wget -O authorized_keys https://github.com/yuriipolishchuk.keys
 ```
 
-replacing `yuriipolishchuk` with your github username.
+replacing `yuriipolishchuk` with your GitHub username.
 
 
 * Create alias for SSH wrapper
@@ -184,13 +184,13 @@ NOTE: IAM roles can be used for AuthN/Z if container is running on EC2 instance.
 
 * Re-architect to use pivot server for cost savings.
 
-* Alternatively websockets proxy can be considered. For example [wstunnel](https://github.com/mhzed/wstunnel):
+* Alternatively WebSockets proxy can be considered. For example [wstunnel](https://github.com/mhzed/wstunnel):
 
   ```bash
   ssh -o ProxyCommand="wstunnel -c -t stdio:%h:%p https://server" user@sshDestination
   ```
 
-  websocket server implementation must handle AuthN/Z and keep tunnels state
+  WebSocket server implementation must handle AuthN/Z and keep tunnels state
 
 * Restrict permissions for IoT devices in IAM policy
 
